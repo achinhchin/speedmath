@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speed Math - Practice</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="top-bar">
+        <a href="index.html" class="back-btn">← Back</a>
+        <h2 class="mini-title">PRACTICE</h2>
+    </div>
+
+    <div class="page-container split-layout">
+        <div class="settings-part">
+            <h3>Settings</h3>
+            <div class="selection-container compact">
+                <div class="selection-card selected" onclick="selectType(this, '4d2d')">
+                    <h3>Question: 4 Digits</h3>
+                    <p>Ans: 2 Digits</p>
+                </div>
+                <div class="selection-card" onclick="selectType(this, '5d3d')">
+                    <h3>Question: 5 Digits</h3>
+                    <p>Ans: 3 Digits</p>
+                </div>
+            </div>
+            <div class="input-group compact">
+                <label>Countdown (sec)</label>
+                <input type="number" id="countdown" value="20" min="1">
+            </div>
+        </div>
+
+        <div class="game-part">
+            <div id="game-area" class="game-area">
+                <div class="number-display large">
+                    <span class="label">Question</span>
+                    <span id="question-display" class="digits">----</span>
+                </div>
+                <div class="number-display large">
+                    <span class="label">Answer</span>
+                    <span id="answer-display" class="digits">--</span>
+                </div>
+            </div>
+
+            <div class="controls-container">
+                <button class="random-btn large" onclick="startRound()">Random</button>
+                <button id="solution-btn" class="solution-btn hidden" onclick="showSolution()">Solution</button>
+            </div>
+
+            <div id="timer-display" class="timer-text hidden">20</div>
+        </div>
+    </div>
+
+    <!-- Solution Modal -->
+    <div id="solution-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeSolution()">&times;</span>
+            <h2>Solution</h2>
+            <div id="solution-steps" class="solution-steps"></div>
+        </div>
+    </div>
+
+    <script>
+        let countdownInterval;
+        let isAnimating = false;
+        let currentMode = '4d2d';
+        let currentSolution = [];
+        let animationInterval = null;
+
+        function selectType(element, type) {
+            document.querySelectorAll('.selection-card').forEach(c => c.classList.remove('selected'));
+            element.classList.add('selected');
+            currentMode = type;
+        }
+
+        async function startRound() {
+            if (isAnimating) return;
+
+            // Reset UI
+            if (countdownInterval) clearInterval(countdownInterval);
+            if (animationInterval) clearInterval(animationInterval);
+
+            document.getElementById('timer-display').classList.add('hidden');
+            document.getElementById('solution-btn').classList.add('hidden');
+            document.getElementById('solution-modal').classList.add('hidden');
+            currentSolution = [];
+
+            const qDisplay = document.getElementById('question-display');
+            const aDisplay = document.getElementById('answer-display');
+
+            isAnimating = true;
+            document.getElementById('game-area').classList.remove('hidden');
+
+            // Animation: Run for fixed 800ms regardless of API
+            const animationDuration = 800;
+            const animationStartTime = Date.now();
+
+            animationInterval = setInterval(() => {
+                // Show random digits during animation
+                qDisplay.innerText = Math.floor(1000 + Math.random() * 9000);
+                aDisplay.innerText = Math.floor(10 + Math.random() * 90);
+            }, 60);
+
+            // Fetch API data
+            let apiData = null;
+            try {
+                const response = await fetch('http://achinhchin.com:4444');
+                apiData = await response.json();
+            } catch (error) {
+                console.error("API Error:", error);
+                apiData = null;
+            }
+
+            // Wait for animation to complete
+            const elapsed = Date.now() - animationStartTime;
+            const remaining = animationDuration - elapsed;
+            if (remaining > 0) {
+                await new Promise(resolve => setTimeout(resolve, remaining));
+            }
+
+            // Stop animation
+            clearInterval(animationInterval);
+            animationInterval = null;
+            isAnimating = false;
+
+            // Display results
+            if (apiData) {
+                // API success
+                const questionNums = apiData[0];
+                const answerVal = apiData[1];
+                currentSolution = apiData[2] || [];
+
+                qDisplay.innerText = questionNums.join(' ');
+                aDisplay.innerText = answerVal;
+
+                document.getElementById('solution-btn').classList.remove('hidden');
+            } else {
+                // Fallback to local generation
+                let finalQ, finalA;
+                if (currentMode === '4d2d') {
+                    finalQ = Math.floor(1000 + Math.random() * 9000);
+                    finalA = Math.floor(10 + Math.random() * 90);
+                } else {
+                    finalQ = Math.floor(10000 + Math.random() * 90000);
+                    finalA = Math.floor(100 + Math.random() * 900);
+                }
+                qDisplay.innerText = finalQ;
+                aDisplay.innerText = finalA;
+            }
+
+            // Start Timer
+            startTimer();
+        }
+
+        function startTimer() {
+            const timerDisplay = document.getElementById('timer-display');
+            let timeLeft = parseInt(document.getElementById('countdown').value) || 20;
+
+            timerDisplay.innerText = timeLeft;
+            timerDisplay.classList.remove('hidden');
+
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.innerText = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    timerDisplay.innerText = "Time's Up!";
+                }
+            }, 1000);
+        }
+
+        function showSolution() {
+            const stepsContainer = document.getElementById('solution-steps');
+            stepsContainer.innerHTML = '';
+
+            if (!currentSolution || currentSolution.length === 0) {
+                stepsContainer.innerHTML = '<p>No solution available.</p>';
+            } else {
+                currentSolution.forEach(step => {
+                    const div = document.createElement('div');
+                    div.className = 'step-row';
+                    div.innerText = `${step[0]} ${step[2]} ${step[1]}`;
+                    stepsContainer.appendChild(div);
+                });
+            }
+
+            document.getElementById('solution-modal').classList.remove('hidden');
+        }
+
+        function closeSolution() {
+            document.getElementById('solution-modal').classList.add('hidden');
+        }
+
+        window.onclick = function (event) {
+            const modal = document.getElementById('solution-modal');
+            if (event.target == modal) {
+                modal.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+
+</html>
