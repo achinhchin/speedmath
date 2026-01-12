@@ -10,6 +10,9 @@ const app = new Elysia()
         }
     }))
     .get("/", () => Bun.file("index.html"))
-    .listen(5555);
+    .listen({
+        port: 5555,
+        hostname: "0.0.0.0"
+    });
 
-console.log(`🚀 Elysia server running at http://localhost:${app.server?.port}`);
+console.log(`🚀 Elysia server running at http://0.0.0.0:${app.server?.port}`);
