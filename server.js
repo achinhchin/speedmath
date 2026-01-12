@@ -1,27 +1,15 @@
-const server = Bun.serve({
-    port: 5555,
-    async fetch(req) {
-        const url = new URL(req.url);
-        let path = url.pathname;
+import { Elysia } from "elysia";
+import { staticPlugin } from "@elysiajs/static";
 
-        // Default to index.html
-        if (path === "/") {
-            path = "/index.html";
+const app = new Elysia()
+    .use(staticPlugin({
+        assets: ".",
+        prefix: "/",
+        headers: {
+            "Cache-Control": "public, max-age=3600"
         }
+    }))
+    .get("/", () => Bun.file("index.html"))
+    .listen(5555);
 
-        // Serve static files
-        const file = Bun.file("." + path);
-
-        if (await file.exists()) {
-            // Set cache headers (1 hour for production)
-            const headers = new Headers();
-            headers.set("Cache-Control", "public, max-age=3600");
-
-            return new Response(file, { headers });
-        }
-
-        return new Response("Not Found", { status: 404 });
-    },
-});
-
-console.log(`🚀 Server running at http://localhost:${server.port}`);
+console.log(`🚀 Elysia server running at http://localhost:${app.server?.port}`);
